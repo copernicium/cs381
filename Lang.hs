@@ -26,8 +26,20 @@ defaultI :: Expr
 defaultI = LitI 0
 
 --"core" language End
--- Good Examples
 
+--Here are some example expressions:
+-- Good Examples
 -- int x = 0
-ex1 :: Stmt
+ex1 :: Stmt     --Expr?
 ex1 = undefined -- TODO
+
+--While
+--
+--   begin
+--     R := 1
+--     while R <= 100
+--       R := R + R
+--   end
+
+
+--Identify/define the semantic domain for this language
