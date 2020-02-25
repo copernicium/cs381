@@ -16,7 +16,7 @@ data Expr
 
 data Stmt
    = Set Expr
-   | IfElse Expr Stmt Stmt
+   | IfElse Expr Stmt Stmt --conditional expressions
    | While Expr [Stmt]
    | Begin [Stmt]
   deriving (Eq,Show)
