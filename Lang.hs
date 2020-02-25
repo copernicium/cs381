@@ -1,7 +1,8 @@
 module Lang where -- TODO name language
 
--- Abstract Syntax
 
+--Syntax of the "core" language start
+-- Abstract Syntax
 type Var = String
 
 data Expr
@@ -24,6 +25,7 @@ data Stmt
 defaultI :: Expr
 defaultI = LitI 0
 
+--"core" language End
 -- Good Examples
 
 -- int x = 0
