@@ -13,6 +13,7 @@ data Expr
    | Declare Var Expr -- TODO figure out type system and how to track variables
    | Bind Var Expr
    | Ref Var
+   | Get              -- while loop
   deriving (Eq,Show)
 
 data Math
@@ -42,9 +43,25 @@ ex1 = undefined -- TODO
 --
 --   begin
 --     R := 1
---     while R <= 100
+--     while R < 50
 --       R := R + R
 --   end
+ex2 :: stmt
+ex2 = Begin [Set (LitI 1),while (LT Get (Lit 50)) [Set (Add Get Get) ]]
+
 
 
 --Identify/define the semantic domain for this language
+-- Type
+--   *Int
+--   *String
+--   *Bool
+--   *Type Error
+data domain  = I Int
+             | S String
+             | B Bool
+             | Error
+
+
+
+-- Valuation function for expressions.
