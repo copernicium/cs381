@@ -13,7 +13,6 @@ data Expr
    | Declare Var Expr -- TODO figure out type system and how to track variables
    | Bind Var Expr
    | Ref Var
-   | Get              -- while loop
   deriving (Eq,Show)
 
 data Math
@@ -47,7 +46,7 @@ ex1 = undefined -- TODO
 --       R := R + R
 --   end
 ex2 :: stmt
-ex2 = Begin [Set (LitI 1),while (LT Get (Lit 50)) [Set (Add Get Get) ]]
+ex2 = Begin [Set (LitI 1),while (LT (Ref Var) (Lit 50)) [Set (Add (Ref Var) (Ref Var)) ]]
 
 
 
