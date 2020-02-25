@@ -23,7 +23,7 @@ data Math
 data Stmt
    = Set Expr
    | IfElse Expr Stmt Stmt --conditional expressions
-   | While Expr [Stmt]
+   | While Math [Stmt]     --Modify Expr to Math (David)
    | Begin [Stmt]
   deriving (Eq,Show)
 
