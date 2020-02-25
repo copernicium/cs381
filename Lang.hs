@@ -57,10 +57,12 @@ ex2 = Begin [Set (LitI 1),while (LT Get (Lit 50)) [Set (Add Get Get) ]]
 --   *String
 --   *Bool
 --   *Type Error
-data domain  = I Int
-             | S String
-             | B Bool
-             | Error
+--data domain  = I Int
+--             | S String
+--             | B Bool
+--             | Error
+data maybe a = Nothing | Just a
+data domain a b c = I a | S b | B c
 
 
 
