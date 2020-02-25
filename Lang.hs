@@ -15,6 +15,11 @@ data Expr
    | Ref Var
   deriving (Eq,Show)
 
+data Math
+   = LTE Expr Expr         -- less than or equal to
+   = LT  Expr Expr         -- less than
+  deriving (Eq,Show)
+
 data Stmt
    = Set Expr
    | IfElse Expr Stmt Stmt --conditional expressions
