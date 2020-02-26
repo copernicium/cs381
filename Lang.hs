@@ -1,5 +1,6 @@
 module Lang where -- TODO name language
 
+import Prelude hiding (LT, EQ, GT)
 
 --Syntax of the "core" language start
 -- Abstract Syntax
@@ -9,21 +10,23 @@ data Expr
    = LitI Int
    | LitB Bool
    | LitS String
-   | Add Expr Expr
-   | Declare Var Expr -- TODO figure out type system and how to track variables
-   | Bind Var Expr
    | Ref Var
-  deriving (Eq,Show)
-
-data Math
-   = LTE Expr Expr         -- less than or equal to
-   = LT  Expr Expr         -- less than
+   | Add Expr Expr
+   | Sub Expr Expr
+   | Mul Expr Expr
+   | LT Expr Expr
+   | LTE Expr Expr
+   | EQ Expr Expr
+   | GTE Expr Expr
+   | GT Expr Expr
+   | NE Expr Expr
   deriving (Eq,Show)
 
 data Stmt
-   = Set Expr
+   = Declare Var Expr
+   | Bind Var Expr
    | IfElse Expr Stmt Stmt --conditional expressions
-   | While Math [Stmt]     --Modify Expr to Math (David)
+   | While Expr Stmt
    | Begin [Stmt]
   deriving (Eq,Show)
 
@@ -34,21 +37,35 @@ defaultI = LitI 0
 
 --Here are some example expressions:
 -- Good Examples
+
 -- int x = 0
-ex1 :: Stmt     --Expr?
-ex1 = undefined -- TODO
+ex1 :: [Stmt]
+ex1 = [Declare "x" (LitI 0)]
 
---While
+-- int x = 4
+-- int y = 5
+-- int z = x + y
 --
---   begin
---     R := 1
---     while R < 50
---       R := R + R
---   end
-ex2 :: stmt
-ex2 = Begin [Set (LitI 1),while (LT (Ref Var) (Lit 50)) [Set (Add (Ref Var) (Ref Var)) ]]
+ex2 :: [Stmt]
+ex2 = [Declare "x" (LitI 4),
+       Declare "y" (LitI 5),
+       Declare "z" (Add (Ref "x") (Ref "y"))]
 
-
+-- int i = 0
+-- int y = 1
+-- while i < 5
+-- begin
+--    y = y * 2
+--    i = i + 1
+-- end
+--
+ex3 :: [Stmt]
+ex3 = [Declare "i" (LitI 0),
+       Declare "y" (LitI 1),
+       While (LT (Ref "i") (LitI 5)) (Begin [
+          (Bind "y" (Mul (Ref "y") (LitI 2))),
+          (Bind "i" (Add (Ref "i") (LitI 1)))
+       ])]
 
 --Identify/define the semantic domain for this language
 -- Type
@@ -56,13 +73,98 @@ ex2 = Begin [Set (LitI 1),while (LT (Ref Var) (Lit 50)) [Set (Add (Ref Var) (Ref
 --   *String
 --   *Bool
 --   *Type Error
---data domain  = I Int
---             | S String
---             | B Bool
---             | Error
-data maybe a = Nothing | Just a
-data domain a b c = I a | S b | B c
+data Value 
+   = I Int 
+   | S String
+   | B Bool
+   | Error
+  deriving (Eq,Show)
 
-
+type Env = [(Var, Value)] -- TODO scopes
 
 -- Valuation function for expressions.
+
+
+-- | Get the value of a variable
+--
+ref :: Var -> Env -> Value
+ref _ []      = Error
+ref var ((name, val) : t) = if name == var then val else ref var t
+
+-- | Check if a variable is defined
+--
+find :: Var -> Env -> Bool
+find var env = case ref var env of 
+                 Error -> False
+                 _ -> True
+
+-- Evaluation function for an expression
+--
+expr :: Expr -> Env -> Value
+expr (LitI x) env  = I x
+expr (LitS x) env  = S x
+expr (LitB x) env  = B x
+expr (Ref var) env = ref var env
+expr (Add a b) env = case (expr a env, expr b env) of
+                       (I i, I j) -> I (i + j)
+                       (S i, S j) -> S (i ++ j)
+                       _ -> Error
+expr (Sub a b) env = case (expr a env, expr b env) of
+                       (I i, I j) -> I (i - j)
+                       _ -> Error
+expr (Mul a b) env = case (expr a env, expr b env) of
+                       (I i, I j) -> I (i * j)
+                       _ -> Error
+expr (LT a b) env  = case (expr a env, expr b env) of
+                       (I i, I j) -> B (i < j)
+                       _ -> Error
+expr (LTE a b) env = case (expr a env, expr b env) of
+                       (I i, I j) -> B (i <= j)
+                       _ -> Error
+expr (EQ a b) env  = case (expr a env, expr b env) of
+                       (I i, I j) -> B (i == j)
+                       _ -> Error
+expr (GTE a b) env = case (expr a env, expr b env) of
+                       (I i, I j) -> B (i >= j)
+                       _ -> Error
+expr (GT a b) env  = case (expr a env, expr b env) of
+                       (I i, I j) -> B (i > j)
+                       _ -> Error
+expr (NE a b) env  = case (expr a env, expr b env) of
+                       (I i, I j) -> B (i /= j)
+                       _ -> Error
+
+-- | Bind an existing variable to a new value
+--
+bind :: Var -> Value -> Env -> Maybe Env
+bind _ _ []              = Nothing
+bind var val ((name, val') : t) 
+  | name == var = Just ((var, val) : t)
+  | otherwise   = case bind var val t of 
+                    Nothing -> Nothing
+                    Just t -> Just ((name, val') : t)
+
+-- | Evaluation function for a single statement
+--
+stmt :: Stmt -> Env -> Maybe Env
+stmt (Declare var e) env = if find var env then Nothing else Just ((var, expr e env) : env)
+stmt (Bind var e) env    = bind var (expr e env) env
+stmt (IfElse c t e) env  = case expr c env of
+                             B True  -> stmt t env
+                             B False -> stmt e env
+                             _ -> Nothing
+stmt (While c b) env     = case expr c env of
+                             B True  -> case stmt b env of
+                                          Nothing   -> Nothing
+                                          Just env' -> stmt (While c b) env'
+                             B False -> Just env
+                             _ -> Nothing
+stmt (Begin b) env       = eval b env
+
+-- | Evaluation function for a list of statements
+--
+eval :: [Stmt] -> Env -> Maybe Env
+eval [] env = Just env
+eval (h:t) env = case stmt h env of
+                   Nothing   -> Nothing
+                   Just env' -> eval t env'
