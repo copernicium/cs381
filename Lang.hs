@@ -66,3 +66,9 @@ data domain a b c = I a | S b | B c
 
 
 -- Valuation function for expressions.
+
+
+-- Static type system
+
+typeOf::Exp -> Maybe Var
+typeOf = undefined
