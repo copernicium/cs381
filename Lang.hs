@@ -60,11 +60,22 @@ ex2 = Begin [Set (LitI 1),while (LT (Ref Var) (Lit 50)) [Set (Add (Ref Var) (Ref
 --             | S String
 --             | B Bool
 --             | Error
-data maybe a = Nothing | Just a
-data domain a b c = I a | S b | B c
+-- data maybe a = Nothing | Just a
+-- data domain a b c = I a | S b | B c
+data Value = I Int
+           | S String
+           | B Bool
+
+-- Valuation function for expressions.
+
+sem :: Expr -> Maybe Value
+sem (Add x y) = case sem x, sem y of
+                     (LitI i, LitI j) -> Just (I (i + j))
+                     (LitS i, LitS j) -> Just (S (i ++ j))
+                     _ -> Nothing
 
 
-
+<<<<<<< HEAD
 -- Valuation function for expressions.
 
 
@@ -72,3 +83,5 @@ data domain a b c = I a | S b | B c
 
 typeOf::Exp -> Maybe Var
 typeOf = undefined
+=======
+>>>>>>> 24b6bcd3758eb279b2ff4b9d8e66e82c00c802ce
