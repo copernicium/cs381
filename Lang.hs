@@ -82,9 +82,6 @@ data Value
 
 type Env = [(Var, Value)] -- TODO scopes
 
--- Valuation function for expressions.
-
-
 -- | Get the value of a variable
 --
 ref :: Var -> Env -> Value
@@ -168,3 +165,7 @@ eval [] env = Just env
 eval (h:t) env = case stmt h env of
                    Nothing   -> Nothing
                    Just env' -> eval t env'
+-- Static type system
+
+typeOf :: Expr -> Maybe Var
+typeOf = undefined
