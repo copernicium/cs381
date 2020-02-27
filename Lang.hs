@@ -165,10 +165,106 @@ eval [] env = Just env
 eval (h:t) env = case stmt h env of
                    Nothing   -> Nothing
                    Just env' -> eval t env'
+
+
+
+
 -- Static type system
 
-typeOf :: Expr -> Maybe Var
-typeOf = undefined
+--typeOf :: Expr -> Maybe Var
+--typeOf = undefined
+
+
+data Type = TInt | TString | TBool | TError
+     deriving (Eq,Show)
+
+--Helper function
+ref2 :: Var -> Env -> Maybe Type
+ref2 _ []      = Nothing
+ref2 var ((name, val) : t) | var ==name = case val of 
+                                           (I v) -> Just TInt
+                                           (S s) -> Just TString
+                                           (B b) -> Just TError
+                           | otherwise = ref2 var t
+                           
+--Type good case
+ex4:: Expr
+ex4 = (Add (LitI 5) (LitI 3))
+
+
+ex6:: Expr
+ex6 = (Add (LitI 5) (Ref "x"))
+
+ex7 :: [Stmt]
+ex7 = [Declare "i" (LitI 0),
+       Declare "y" (LitI 1),
+       While (LT (Ref "i") (LitI 5)) (Begin [
+          (Bind "y" (Mul (Ref "y") (LitI 2))),
+          (Bind "i" (Add (Ref "i") (LitI 1)))
+       ])]
+
+--Type error case
+ex5:: Expr
+ex5 = (LTE (LitI 5) (LitS "56"))
+
+
+
+--Expression type check
+typeExpr :: Expr -> Env -> Maybe Type
+typeExpr (LitI _)   _  = Just TInt
+typeExpr (LitS _)   _  = Just TString
+typeExpr (LitB _)   _  = Just TBool
+typeExpr (Ref v)  env  = (ref2 v env)
+typeExpr (Add l r) env = case (typeExpr l env, typeExpr r env) of
+                          (Just TInt, Just TInt) -> Just TInt
+                          _                     -> Nothing
+typeExpr (Sub l r) env = case (typeExpr l env, typeExpr r env) of
+                         (Just TInt, Just TInt) -> Just TInt
+                         _                      -> Nothing
+typeExpr (Mul l r) env = case (typeExpr l env, typeExpr r env) of
+                         (Just TInt, Just TInt) -> Just TInt
+                         _                      -> Nothing
+typeExpr (LT l r) env = case (typeExpr l env, typeExpr r env) of
+                         (Just TInt, Just TInt) -> Just TBool
+                         _                      -> Nothing
+typeExpr (LTE l r) env = case (typeExpr l env, typeExpr r env) of
+                         (Just TInt, Just TInt) -> Just TBool
+                         _                      -> Nothing
+typeExpr (EQ l r) env = case (typeExpr l env, typeExpr r env) of
+                         (Just TInt, Just TInt) -> Just TBool
+                         _                      -> Nothing
+typeExpr (GTE l r) env = case (typeExpr l env, typeExpr r env) of
+                         (Just TInt, Just TInt) -> Just TBool
+                         _                      -> Nothing
+typeExpr (GT l r) env = case (typeExpr l env, typeExpr r env) of
+                         (Just TInt, Just TInt) -> Just TBool
+                         _                      -> Nothing
+typeExpr (NE l r) env = case (typeExpr l env, typeExpr r env) of
+                         (Just TInt, Just TInt) -> Just TBool
+                         _                      -> Nothing
+
+
+--Statment type check
+
+typeStmt :: Stmt -> Env -> Bool
+typeStmt (Declare v e)     env = True      --well I don't think we have to check the type of "Declare"
+typeStmt (Bind v e)        env = case (ref2 v env, typeExpr e env) of
+                                  (Just tv, Just te) -> tv == te
+                                  _ -> False
+typeStmt (IfElse c st se)  env = case typeExpr c env of
+                                   Just TBool -> typeStmt st env && typeStmt se env
+                                   _ -> False
+typeStmt (While c sb)      env = case typeExpr c env of
+                                   Just TBool -> typeStmt sb env
+                                   _ -> False
+typeStmt (Begin ss)        env = all (\s -> typeStmt s env) ss
+
+
+--List of statment check
+progType :: [Stmt] -> Env -> Bool
+progType [] _ = True
+progType (s:ss) env = if (typeStmt s env) == False then False else progType ss env
+
 
 
 
