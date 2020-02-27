@@ -279,21 +279,45 @@ progType (s:ss) env = if (typeStmt s env) == False then False else progType ss e
 
 -- | And Or
 
-and :: Expr -> Expr -> Env -> Env -> Value
-and a b env env' = case expr a env of
-           B False -> B False
-           B True -> case expr b env' of
-                      B True -> B True
-                      B False -> B False
-                      _ -> Error
-           _ -> Error
+--and :: Expr -> Expr -> Env -> Env -> Value
+--and a b env env' = case expr a env of
+--           B False -> B False
+--           B True -> case expr b env' of
+--                      B True -> B True
+--                     B False -> B False
+--                      _ -> Error
+--           _ -> Error
 
 
-or :: Expr -> Expr -> Env -> Env -> Value
-or a b env env' = case expr a env of
-          B True -> B True
-          B False -> case expr b env' of
-                     B True -> B True
-                     B False -> B False
-                     _ -> Error
-          _ -> Error
+--or :: Expr -> Expr -> Env -> Env -> Value
+--or a b env env' = case expr a env of
+--          B True -> B True
+--          B False -> case expr b env' of
+--                     B True -> B True
+--                     B False -> B False
+--                     _ -> Error
+--          _ -> Error
+
+
+true :: Expr
+true = EQ (LitI 0) (LitI 0)
+
+false :: Expr
+false = EQ (LitI 0) (LitI 1)
+
+and :: Expr -> Expr -> Expr
+and l r = Ternary l r false
+
+or :: Expr -> Expr -> Expr
+or l r = Ternary l true r
+
+neg :: Expr -> Expr
+neg a = Mul (LitI (-1)) a
+
+not :: Expr -> Expr
+not a = Ternary a false true
+
+
+
+
+
