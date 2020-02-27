@@ -20,6 +20,7 @@ data Expr
    | GTE Expr Expr
    | GT Expr Expr
    | NE Expr Expr
+   | Ternary Expr Expr Expr
   deriving (Eq,Show)
 
 data Stmt
@@ -112,22 +113,26 @@ relationalOp a b env cmp = case (expr a env, expr b env) of
 -- Evaluation function for an expression
 --
 expr :: Expr -> Env -> Value
-expr (LitI x) env  = I x
-expr (LitS x) env  = S x
-expr (LitB x) env  = B x
-expr (Ref var) env = ref var env
-expr (Add a b) env = case (expr a env, expr b env) of
-                       (I i, I j) -> I (i + j)
-                       (S i, S j) -> S (i ++ j)
-                       _ -> Error
-expr (Sub a b) env = arithmeticOp a b env (-)
-expr (Mul a b) env = arithmeticOp a b env (*)
-expr (LT a b) env  = relationalOp a b env (<)
-expr (LTE a b) env = relationalOp a b env (<=)
-expr (EQ a b) env  = relationalOp a b env (==)
-expr (GTE a b) env = relationalOp a b env (>=)
-expr (GT a b) env  = relationalOp a b env (>)
-expr (NE a b) env  = relationalOp a b env (/=)
+expr (LitI x) env        = I x
+expr (LitS x) env        = S x
+expr (LitB x) env        = B x
+expr (Ref var) env       = ref var env
+expr (Add a b) env       = case (expr a env, expr b env) of
+                             (I i, I j) -> I (i + j)
+                             (S i, S j) -> S (i ++ j)
+                             _ -> Error
+expr (Sub a b) env       = arithmeticOp a b env (-)
+expr (Mul a b) env       = arithmeticOp a b env (*)
+expr (LT a b) env        = relationalOp a b env (<)
+expr (LTE a b) env       = relationalOp a b env (<=)
+expr (EQ a b) env        = relationalOp a b env (==)
+expr (GTE a b) env       = relationalOp a b env (>=)
+expr (GT a b) env        = relationalOp a b env (>)
+expr (NE a b) env        = relationalOp a b env (/=)
+expr (Ternary c t e) env = case (expr c env) of 
+                             (B True)  -> expr t env
+                             (B False) -> expr e env
+                             _ -> Error
 
 -- | Bind an existing variable to a new value
 --
