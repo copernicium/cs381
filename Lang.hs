@@ -169,3 +169,30 @@ eval (h:t) env = case stmt h env of
 
 typeOf :: Expr -> Maybe Var
 typeOf = undefined
+
+
+
+
+
+
+
+-- | And Or
+
+and :: Expr -> Expr -> Env -> Env -> Value
+and a b env env' = case expr a env of
+           B False -> B False
+           B True -> case expr b env' of
+                      B True -> B True
+                      B False -> B False
+                      _ -> Error
+           _ -> Error
+
+
+or :: Expr -> Expr -> Env -> Env -> Value
+or a b env env' = case expr a env of
+          B True -> B True
+          B False -> case expr b env' of
+                     B True -> B True
+                     B False -> B False
+                     _ -> Error
+          _ -> Error
