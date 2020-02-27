@@ -184,7 +184,8 @@ ref2 _ []      = Nothing
 ref2 var ((name, val) : t) | var ==name = case val of 
                                            (I v) -> Just TInt
                                            (S s) -> Just TString
-                                           (B b) -> Just TError
+                                           (B b) -> Just TBool
+                                           Error -> Just TError
                            | otherwise = ref2 var t
                            
 --Type good case
@@ -211,37 +212,41 @@ ex5 = (LTE (LitI 5) (LitS "56"))
 
 --Expression type check
 typeExpr :: Expr -> Env -> Maybe Type
-typeExpr (LitI _)   _  = Just TInt
-typeExpr (LitS _)   _  = Just TString
-typeExpr (LitB _)   _  = Just TBool
-typeExpr (Ref v)  env  = (ref2 v env)
-typeExpr (Add l r) env = case (typeExpr l env, typeExpr r env) of
-                          (Just TInt, Just TInt) -> Just TInt
-                          _                     -> Nothing
-typeExpr (Sub l r) env = case (typeExpr l env, typeExpr r env) of
-                         (Just TInt, Just TInt) -> Just TInt
-                         _                      -> Nothing
-typeExpr (Mul l r) env = case (typeExpr l env, typeExpr r env) of
-                         (Just TInt, Just TInt) -> Just TInt
-                         _                      -> Nothing
-typeExpr (LT l r) env = case (typeExpr l env, typeExpr r env) of
-                         (Just TInt, Just TInt) -> Just TBool
-                         _                      -> Nothing
-typeExpr (LTE l r) env = case (typeExpr l env, typeExpr r env) of
-                         (Just TInt, Just TInt) -> Just TBool
-                         _                      -> Nothing
-typeExpr (EQ l r) env = case (typeExpr l env, typeExpr r env) of
-                         (Just TInt, Just TInt) -> Just TBool
-                         _                      -> Nothing
-typeExpr (GTE l r) env = case (typeExpr l env, typeExpr r env) of
-                         (Just TInt, Just TInt) -> Just TBool
-                         _                      -> Nothing
-typeExpr (GT l r) env = case (typeExpr l env, typeExpr r env) of
-                         (Just TInt, Just TInt) -> Just TBool
-                         _                      -> Nothing
-typeExpr (NE l r) env = case (typeExpr l env, typeExpr r env) of
-                         (Just TInt, Just TInt) -> Just TBool
-                         _                      -> Nothing
+typeExpr (LitI _)   _        = Just TInt
+typeExpr (LitS _)   _        = Just TString
+typeExpr (LitB _)   _        = Just TBool
+typeExpr (Ref v)  env        = (ref2 v env)
+typeExpr (Add l r) env       = case (typeExpr l env, typeExpr r env) of
+                                 (Just TInt, Just TInt) -> Just TInt
+                                 _                     -> Nothing
+typeExpr (Sub l r) env       = case (typeExpr l env, typeExpr r env) of
+                                 (Just TInt, Just TInt) -> Just TInt
+                                 _                      -> Nothing
+typeExpr (Mul l r) env       = case (typeExpr l env, typeExpr r env) of
+                                 (Just TInt, Just TInt) -> Just TInt
+                                 _                      -> Nothing
+typeExpr (LT l r) env        = case (typeExpr l env, typeExpr r env) of
+                                 (Just TInt, Just TInt) -> Just TBool
+                                 _                      -> Nothing
+typeExpr (LTE l r) env       = case (typeExpr l env, typeExpr r env) of
+                                 (Just TInt, Just TInt) -> Just TBool
+                                 _                      -> Nothing
+typeExpr (EQ l r) env        = case (typeExpr l env, typeExpr r env) of
+                                 (Just TInt, Just TInt) -> Just TBool
+                                 _                      -> Nothing
+typeExpr (GTE l r) env       = case (typeExpr l env, typeExpr r env) of
+                                 (Just TInt, Just TInt) -> Just TBool
+                                 _                      -> Nothing
+typeExpr (GT l r) env        = case (typeExpr l env, typeExpr r env) of
+                                 (Just TInt, Just TInt) -> Just TBool
+                                 _                      -> Nothing
+typeExpr (NE l r) env        = case (typeExpr l env, typeExpr r env) of
+                                 (Just TInt, Just TInt) -> Just TBool
+                                 _                      -> Nothing
+typeExpr (Ternary c t e) env = case typeExpr c env of
+                                 Just TBool -> case (typeExpr t env, typeExpr e env) of
+                                                 (tt, te) -> if tt == te then tt else Nothing
+                                 _          -> Nothing
 
 
 --Statment type check
