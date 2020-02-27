@@ -95,6 +95,20 @@ find var env = case ref var env of
                  Error -> False
                  _ -> True
 
+-- | Apply an arithmetic operator (e.g. addition) to two expressions
+--
+arithmeticOp :: Expr -> Expr -> Env -> (Int -> Int -> Int) -> Value
+arithmeticOp a b env op = case (expr a env, expr b env) of
+                            (I i, I j) -> I (op i j)
+                            _ -> Error
+
+-- | Evaluate two expressions of LitI with a relational/comparison operator
+--
+relationalOp :: Expr -> Expr -> Env -> (Int -> Int -> Bool) -> Value
+relationalOp a b env cmp = case (expr a env, expr b env) of
+                             (I i, I j) -> B (cmp i j)
+                             _ -> Error
+
 -- Evaluation function for an expression
 --
 expr :: Expr -> Env -> Value
@@ -106,30 +120,14 @@ expr (Add a b) env = case (expr a env, expr b env) of
                        (I i, I j) -> I (i + j)
                        (S i, S j) -> S (i ++ j)
                        _ -> Error
-expr (Sub a b) env = case (expr a env, expr b env) of
-                       (I i, I j) -> I (i - j)
-                       _ -> Error
-expr (Mul a b) env = case (expr a env, expr b env) of
-                       (I i, I j) -> I (i * j)
-                       _ -> Error
-expr (LT a b) env  = case (expr a env, expr b env) of
-                       (I i, I j) -> B (i < j)
-                       _ -> Error
-expr (LTE a b) env = case (expr a env, expr b env) of
-                       (I i, I j) -> B (i <= j)
-                       _ -> Error
-expr (EQ a b) env  = case (expr a env, expr b env) of
-                       (I i, I j) -> B (i == j)
-                       _ -> Error
-expr (GTE a b) env = case (expr a env, expr b env) of
-                       (I i, I j) -> B (i >= j)
-                       _ -> Error
-expr (GT a b) env  = case (expr a env, expr b env) of
-                       (I i, I j) -> B (i > j)
-                       _ -> Error
-expr (NE a b) env  = case (expr a env, expr b env) of
-                       (I i, I j) -> B (i /= j)
-                       _ -> Error
+expr (Sub a b) env = arithmeticOp a b env (-)
+expr (Mul a b) env = arithmeticOp a b env (*)
+expr (LT a b) env  = relationalOp a b env (<)
+expr (LTE a b) env = relationalOp a b env (<=)
+expr (EQ a b) env  = relationalOp a b env (==)
+expr (GTE a b) env = relationalOp a b env (>=)
+expr (GT a b) env  = relationalOp a b env (>)
+expr (NE a b) env  = relationalOp a b env (/=)
 
 -- | Bind an existing variable to a new value
 --
