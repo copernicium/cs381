@@ -31,9 +31,6 @@ data Stmt
    | Begin [Stmt]
   deriving (Eq,Show)
 
-defaultI :: Expr
-defaultI = LitI 0
-
 --"core" language End
 
 --Here are some example expressions:
