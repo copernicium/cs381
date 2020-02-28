@@ -2,8 +2,13 @@ module Lang where -- TODO name language
 
 import Prelude hiding (LT, EQ, GT)
 
---Syntax of the "core" language start
+-- =========================================
+-- 
+-- Language Core
+-- 
+
 -- Abstract Syntax
+
 type Var = String
 
 data Expr
@@ -26,14 +31,16 @@ data Expr
 data Stmt
    = Declare Var Expr
    | Bind Var Expr
-   | IfElse Expr Stmt Stmt --conditional expressions
+   | IfElse Expr Stmt Stmt
    | While Expr Stmt
    | Begin [Stmt]
   deriving (Eq,Show)
 
---"core" language End
+-- =========================================
+--
+-- Examples
+--
 
---Here are some example expressions:
 -- Good Examples
 
 -- int x = 0
@@ -65,12 +72,12 @@ ex3 = [Declare "i" (LitI 0),
           (Bind "i" (Add (Ref "i") (LitI 1)))
        ])]
 
---Identify/define the semantic domain for this language
--- Type
---   *Int
---   *String
---   *Bool
---   *Type Error
+-- =========================================
+--
+-- Valuation function
+--
+
+-- Semantic domain
 data Value 
    = I Int 
    | S String
@@ -169,11 +176,10 @@ eval (h:t) env = case stmt h env of
 
 
 
+-- =========================================
+-- 
 -- Static type system
-
---typeOf :: Expr -> Maybe Var
---typeOf = undefined
-
+--
 
 data Type = TInt | TString | TBool | TError
      deriving (Eq,Show)
@@ -272,12 +278,10 @@ progType (s:ss) env = if (typeStmt s env) == False then False else progType ss e
 
 
 
-
-
-
-
-
--- | Syntatic Sugar
+-- =========================================
+--
+-- Syntactic sugar
+--
 
 true :: Expr
 true = EQ (LitI 0) (LitI 0)
@@ -296,8 +300,4 @@ neg a = Mul (LitI (-1)) a
 
 not :: Expr -> Expr
 not a = Ternary a false true
-
-
-
-
 
