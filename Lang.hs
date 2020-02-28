@@ -233,11 +233,6 @@ eval (h:t) env = case stmt h env of
                    Result val -> Result val
                    EvalError  -> EvalError
 
--- | Run a program in a new environment and produce its result
---
-run :: [Stmt] -> EvalResult
-run prog = eval prog [] -- TODO type-checking
-
 -- =========================================
 -- 
 -- Static type system
@@ -373,3 +368,23 @@ neg a = Mul (LitI (-1)) a
 not :: Expr -> Expr
 not a = Ternary a false true
 
+-- =========================================
+-- 
+-- Prelude
+--
+
+-- | Prelude--standard library for the language
+--
+prelude :: Env
+prelude = [] -- TODO
+
+
+-- =========================================
+-- 
+-- Top-level interpretter
+--
+
+-- | Run a program in a new environment and produce its result
+--
+run :: [Stmt] -> EvalResult
+run prog = eval prog prelude -- TODO type-checking
