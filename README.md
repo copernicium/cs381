@@ -1,4 +1,4 @@
-# CS 381
+# CS 381 Interpretter Project
 OSU CS 381 programming language interpreter project
 
 ## Team Members
@@ -9,8 +9,12 @@ OSU CS 381 programming language interpreter project
 
 ## Language Introduction
 
-TODO
+Held is a statically-typed imperative langauge with first-class functions.
 
 ## How to Execute Example Programs
 
-TODO
+From the main folder of this project, run GHCi:
+`ghci Lang.hs`
+
+Within GHCi, run any example program:
+`run ex1     -- Or any other example name`
