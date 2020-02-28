@@ -14,7 +14,9 @@ Held is a statically-typed imperative langauge with first-class functions.
 ## How to Execute Example Programs
 
 From the main folder of this project, run GHCi:
+
 `ghci Lang.hs`
 
 Within GHCi, run any example program:
+
 `run ex1     -- Or any other example name`
