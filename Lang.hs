@@ -242,30 +242,27 @@ data Type = TInt  -- TODO add TVoid?
           | TString 
           | TBool 
           | TFunction
-          | TError
+          | TError String
      deriving (Eq,Show)
 
 --Helper function
-typeOfRef :: Var -> Env -> Maybe Type
-typeOfRef _ []      = Nothing
+typeOfRef :: Var -> Env -> Type
+typeOfRef name []               = TError ("Undefined reference to name " ++ name)
 typeOfRef var ((name, val) : t) | var == name = case val of 
-                                            (I v) -> Just TInt
-                                            (S s) -> Just TString
-                                            (B b) -> Just TBool
-                                            (Function _ _) -> Just TFunction
-                                            Error -> Just TError
-                           | otherwise = typeOfRef var t
+                                            (I v) -> TInt
+                                            (S s) -> TString
+                                            (B b) -> TBool
+                                            (Function _ _) -> TFunction
+                                            Error -> TError "" -- TODO this will eventually not be needed
+                                | otherwise = typeOfRef var t
                            
 --Type good case
 exType1:: Expr
 exType1 = (Add (LitI 5) (LitI 3))
 
 
-exType2:: Expr
-exType2 = (Add (LitI 5) (Ref "x"))
-
-exType3 :: [Stmt]
-exType3 = [Declare "i" (LitI 0),
+exType2 :: [Stmt]
+exType2 = [Declare "i" (LitI 0),
            Declare "y" (LitI 1),
            While (LT (Ref "i") (LitI 5)) (Begin [
               (Bind "y" (Mul (Ref "y") (LitI 2))),
@@ -273,69 +270,96 @@ exType3 = [Declare "i" (LitI 0),
            ])]
 
 --Type error case
+
+exType3:: Expr
+exType3 = (Add (LitI 5) (Ref "x"))
+
 exType4:: Expr
 exType4 = (LTE (LitI 5) (LitS "56"))
 
 
 
 --Expression type check
-typeExpr :: Expr -> Env -> Maybe Type
-typeExpr (LitI _)   _               = Just TInt
-typeExpr (LitS _)   _               = Just TString
-typeExpr (LitB _)   _               = Just TBool
-typeExpr (Ref v)  env               = (typeOfRef v env)
+typeExpr :: Expr -> Env -> Type
+typeExpr (LitI _)   _               = TInt
+typeExpr (LitS _)   _               = TString
+typeExpr (LitB _)   _               = TBool
+typeExpr (Ref v)  env               = typeOfRef v env
 typeExpr (Add l r) env              = case (typeExpr l env, typeExpr r env) of
-                                        (Just TInt, Just TInt) -> Just TInt
-                                        _                     -> Nothing
+                                        (TInt, TInt)    -> TInt
+                                        (TError msg, _) -> TError msg
+                                        (_, TError msg) -> TError msg
+                                        _               -> TError "Add -- Mismatched types"
 typeExpr (Sub l r) env              = case (typeExpr l env, typeExpr r env) of
-                                        (Just TInt, Just TInt) -> Just TInt
-                                        _                      -> Nothing
+                                        (TInt, TInt)    -> TInt
+                                        (TError msg, _) -> TError msg
+                                        (_, TError msg) -> TError msg
+                                        _               -> TError "Sub -- Mismatched types"
 typeExpr (Mul l r) env              = case (typeExpr l env, typeExpr r env) of
-                                        (Just TInt, Just TInt) -> Just TInt
-                                        _                      -> Nothing
+                                        (TInt, TInt)    -> TInt
+                                        (TError msg, _) -> TError msg
+                                        (_, TError msg) -> TError msg
+                                        _               -> TError "Mul -- Mismatched types"
 typeExpr (LT l r) env               = case (typeExpr l env, typeExpr r env) of
-                                        (Just TInt, Just TInt) -> Just TBool
-                                        _                      -> Nothing
+                                        (TInt, TInt)    -> TBool
+                                        (TError msg, _) -> TError msg
+                                        (_, TError msg) -> TError msg
+                                        _               -> TError "LT -- Mismatched types"
 typeExpr (LTE l r) env              = case (typeExpr l env, typeExpr r env) of
-                                        (Just TInt, Just TInt) -> Just TBool
-                                        _                      -> Nothing
+                                        (TInt, TInt)    -> TBool
+                                        (TError msg, _) -> TError msg
+                                        (_, TError msg) -> TError msg
+                                        _               -> TError "LTE -- Mismatched types"
 typeExpr (EQ l r) env               = case (typeExpr l env, typeExpr r env) of
-                                        (Just TInt, Just TInt) -> Just TBool
-                                        _                      -> Nothing
+                                        (TInt, TInt)    -> TBool
+                                        (TError msg, _) -> TError msg
+                                        (_, TError msg) -> TError msg
+                                        _               -> TError "EQ -- Mismatched types"
 typeExpr (GTE l r) env              = case (typeExpr l env, typeExpr r env) of
-                                        (Just TInt, Just TInt) -> Just TBool
-                                        _                      -> Nothing
+                                        (TInt, TInt)    -> TBool
+                                        (TError msg, _) -> TError msg
+                                        (_, TError msg) -> TError msg
+                                        _               -> TError "GTE -- Mistmached types"
 typeExpr (GT l r) env               = case (typeExpr l env, typeExpr r env) of
-                                        (Just TInt, Just TInt) -> Just TBool
-                                        _                      -> Nothing
+                                        (TInt, TInt)    -> TBool
+                                        (TError msg, _) -> TError msg
+                                        (_, TError msg) -> TError msg
+                                        _               -> TError "GT -- Mismatched types"
 typeExpr (NE l r) env               = case (typeExpr l env, typeExpr r env) of
-                                        (Just TInt, Just TInt) -> Just TBool
-                                        _                      -> Nothing
+                                        (TInt, TInt)    -> TBool
+                                        (TError msg, _) -> TError msg
+                                        (_, TError msg) -> TError msg
+                                        _               -> TError "NE -- Mismatched types"
 typeExpr (Ternary c t e) env        = case typeExpr c env of
-                                        Just TBool -> case (typeExpr t env, typeExpr e env) of
-                                                        (tt, te) -> if tt == te then tt else Nothing
-                                        _          -> Nothing
-typeExpr (CallFunc name params) env = Nothing -- TODO Ensure all return statements have the same value
+                                        TBool -> case (typeExpr t env, typeExpr e env) of
+                                                   (TError msg, _) -> TError msg
+                                                   (_, TError msg) -> TError msg
+                                                   (tt, te)    -> if tt == te then tt else TError ""
+                                        _     -> TError "Invalid ternary conditional"
+typeExpr (CallFunc name params) env = TError "TODO" -- TODO Ensure all return statements have the same value
 
 
 --Statment type check
 
 typeStmt :: Stmt -> Env -> Bool -- TODO produce either a Type instead of Bool
-typeStmt (Declare v e)               env = True      -- TODO Well I don't think we have to check the type of "Declare"
+typeStmt (Declare v e)               env = case typeExpr e env of
+                                            TError msg -> False
+                                            _          -> True
 typeStmt (Bind v e)                  env = case (typeOfRef v env, typeExpr e env) of
-                                            (Just tv, Just te) -> tv == te
-                                            _ -> False
+                                            (TError msg, _) -> False
+                                            (_, TError msg) -> False
+                                            (tv, te)        -> tv == te
 typeStmt (IfElse c st se)            env = case typeExpr c env of
-                                             Just TBool -> typeStmt st env && typeStmt se env
-                                             _ -> False
+                                             TBool -> typeStmt st env && typeStmt se env
+                                             _     -> False
 typeStmt (While c sb)                env = case typeExpr c env of
-                                             Just TBool -> typeStmt sb env
-                                             _ -> False
+                                             TBool -> typeStmt sb env
+                                             _     -> False
 typeStmt (Begin ss)                  env = all (\s -> typeStmt s env) ss
-typeStmt (DefineFunc name vars body) env = True -- TODO Same as "Declare", do we need to check the type?
+typeStmt (DefineFunc name vars body) env = True -- TODO
 typeStmt (Return e) env                  = case typeExpr e env of 
-                                             Just _ -> True
-                                             _      -> False
+                                             TError msg -> False
+                                             _          -> True
 
 
 --List of statment check
@@ -397,7 +421,9 @@ exPrelude2 = [Declare "x" (CallFunc "pow" [LitI 2, LitI 5])]
 -- Top-level interpretter
 --
 
+
+
 -- | Run a program in a new environment and produce its result
 --
 run :: [Stmt] -> EvalResult
-run prog = eval (prelude ++ prog) []-- TODO type-checking
+run prog = if progType (prelude ++ prog) [] then eval (prelude ++ prog) [] else EvalError-- TODO type-checking
