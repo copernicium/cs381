@@ -89,9 +89,9 @@ ex3 = [Declare "i" (LitI 0),
 --
 -- int x = double(2)
 --
-exFunc :: [Stmt]
-exFunc = [DefineFunc "double" ["x"] (Return (Mul (LitI 2) (Ref "x"))),
-          Declare "x" (CallFunc "double" [(LitI 2)])]
+ex4 :: [Stmt]
+ex4 = [DefineFunc "double" ["x"] (Return (Mul (LitI 2) (Ref "x"))),
+       Declare "x" (CallFunc "double" [(LitI 2)])]
 
 -- =========================================
 --
@@ -246,35 +246,35 @@ data Type = TInt  -- TODO add TVoid?
      deriving (Eq,Show)
 
 --Helper function
-ref2 :: Var -> Env -> Maybe Type
-ref2 _ []      = Nothing
-ref2 var ((name, val) : t) | var ==name = case val of 
-                                           (I v) -> Just TInt
-                                           (S s) -> Just TString
-                                           (B b) -> Just TBool
-                                           (Function _ _) -> Just TFunction
-                                           Error -> Just TError
-                           | otherwise = ref2 var t
+typeOfRef :: Var -> Env -> Maybe Type
+typeOfRef _ []      = Nothing
+typeOfRef var ((name, val) : t) | var == name = case val of 
+                                            (I v) -> Just TInt
+                                            (S s) -> Just TString
+                                            (B b) -> Just TBool
+                                            (Function _ _) -> Just TFunction
+                                            Error -> Just TError
+                           | otherwise = typeOfRef var t
                            
 --Type good case
-ex4:: Expr
-ex4 = (Add (LitI 5) (LitI 3))
+exType1:: Expr
+exType1 = (Add (LitI 5) (LitI 3))
 
 
-ex6:: Expr
-ex6 = (Add (LitI 5) (Ref "x"))
+exType2:: Expr
+exType2 = (Add (LitI 5) (Ref "x"))
 
-ex7 :: [Stmt]
-ex7 = [Declare "i" (LitI 0),
-       Declare "y" (LitI 1),
-       While (LT (Ref "i") (LitI 5)) (Begin [
-          (Bind "y" (Mul (Ref "y") (LitI 2))),
-          (Bind "i" (Add (Ref "i") (LitI 1)))
-       ])]
+exType3 :: [Stmt]
+exType3 = [Declare "i" (LitI 0),
+           Declare "y" (LitI 1),
+           While (LT (Ref "i") (LitI 5)) (Begin [
+              (Bind "y" (Mul (Ref "y") (LitI 2))),
+              (Bind "i" (Add (Ref "i") (LitI 1)))
+           ])]
 
 --Type error case
-ex5:: Expr
-ex5 = (LTE (LitI 5) (LitS "56"))
+exType4:: Expr
+exType4 = (LTE (LitI 5) (LitS "56"))
 
 
 
@@ -283,7 +283,7 @@ typeExpr :: Expr -> Env -> Maybe Type
 typeExpr (LitI _)   _               = Just TInt
 typeExpr (LitS _)   _               = Just TString
 typeExpr (LitB _)   _               = Just TBool
-typeExpr (Ref v)  env               = (ref2 v env)
+typeExpr (Ref v)  env               = (typeOfRef v env)
 typeExpr (Add l r) env              = case (typeExpr l env, typeExpr r env) of
                                         (Just TInt, Just TInt) -> Just TInt
                                         _                     -> Nothing
@@ -322,7 +322,7 @@ typeExpr (CallFunc name params) env = Nothing -- TODO Ensure all return statemen
 
 typeStmt :: Stmt -> Env -> Bool -- TODO produce either a Type instead of Bool
 typeStmt (Declare v e)               env = True      -- TODO Well I don't think we have to check the type of "Declare"
-typeStmt (Bind v e)                  env = case (ref2 v env, typeExpr e env) of
+typeStmt (Bind v e)                  env = case (typeOfRef v env, typeExpr e env) of
                                             (Just tv, Just te) -> tv == te
                                             _ -> False
 typeStmt (IfElse c st se)            env = case typeExpr c env of
@@ -375,9 +375,22 @@ not a = Ternary a false true
 
 -- | Prelude--standard library for the language
 --
-prelude :: Env
-prelude = [] -- TODO
+prelude :: [Stmt]
+prelude = [
+  DefineFunc "min" ["i", "j"] (Return (Ternary (LT (Ref "i") (Ref "j")) (Ref "i") (Ref "j"))),
+  DefineFunc "max" ["i", "j"] (Return (Ternary (LT (Ref "i") (Ref "j")) (Ref "j") (Ref "i"))),
+  DefineFunc "pow" ["base", "exp"] (Begin [
+    IfElse (LTE (Ref "expr") (LitI 0))
+      (Return (LitI 1))
+      (Return (Mul (Ref "base") (CallFunc "pow" [(Ref "base"), Sub (Ref "exp") (LitI 1)])))
+  ])
+  ]
 
+exPrelude1 :: [Stmt]
+exPrelude1 = [Declare "x" (CallFunc "min" [LitI 7, LitI 6])]
+
+exPrelude2 :: [Stmt]
+exPrelude2 = [Declare "x" (CallFunc "pow" [LitI 2, LitI 5])]
 
 -- =========================================
 -- 
@@ -387,4 +400,4 @@ prelude = [] -- TODO
 -- | Run a program in a new environment and produce its result
 --
 run :: [Stmt] -> EvalResult
-run prog = eval prog prelude -- TODO type-checking
+run prog = eval (prelude ++ prog) []-- TODO type-checking
