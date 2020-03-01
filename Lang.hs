@@ -111,7 +111,7 @@ data Value
    | S String
    | B Bool
    | Function [Var] [Stmt]
-   | Error
+   | Error -- TODO now that the language is statically-typed, can we get rid of this Error value?
   deriving (Eq,Show)
 
 -- | Type for making named values accessible
@@ -120,9 +120,9 @@ type Env = [(Var, Value)] -- TODO scopes, lazy-evaluation?
 
 -- | Resulting type of evaluating a statement
 --
-data EvalResult = State Env    -- All other statements affect the Env
-                | Result Value -- Return statements produce Result
-                | EvalError String
+data EvalResult = State Env        -- All other statements affect the Env
+                | Result Value     -- Return statements produce Result
+                | EvalError String -- TODO now that the language is statically-typed, can we get rid of this EvalError value?
   deriving (Eq,Show)
 
 
