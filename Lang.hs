@@ -22,7 +22,7 @@ data Expr
    | Add Expr Expr
    | Sub Expr Expr
    | Mul Expr Expr
-   | LT Expr Expr
+   | LT Expr Expr    --refactoring?
    | LTE Expr Expr
    | EQ Expr Expr
    | GTE Expr Expr
