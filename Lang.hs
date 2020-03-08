@@ -1,6 +1,6 @@
 module Lang where
 
-import Prelude hiding (LT, EQ, GT)
+import Prelude hiding (LT, EQ, GT, and, or, not)
 
 -- =========================================
 -- 
