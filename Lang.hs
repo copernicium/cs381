@@ -13,7 +13,7 @@ type Name = String
 
 -- | Expression type
 --
-data Expr
+data Expr -- TODO refactor into separate arithmetic and boolean expression types
    = LitI Int
    | LitB Bool
    | LitS String
@@ -21,7 +21,7 @@ data Expr
    | Add Expr Expr
    | Sub Expr Expr
    | Mul Expr Expr
-   | LT Expr Expr    --refactoring?
+   | LT Expr Expr
    | LTE Expr Expr
    | EQ Expr Expr
    | GTE Expr Expr
@@ -141,7 +141,25 @@ ex4 = [DeclareFunc "double" TInt [TInt],
 
 -- Bad examples
 
--- TODO
+-- | 
+--   var y = x // x not declared
+--   
+--
+--   >>> testError ex5
+--   True
+--
+ex5 :: [Stmt]
+ex5 = [Declare "y" (Ref "x")]
+
+-- | 
+--   var y = 1 == True // type-error
+--   
+--
+--   >>> testError ex6
+--   True
+--
+ex6 :: [Stmt]
+ex6 = [Declare "y" (EQ (LitI 1) (LitB True))]
 
 -- =========================================
 --
@@ -573,6 +591,8 @@ prelude = [
 
 -- |
 --
+--   var x = min(7, 6)
+--
 --   >>> testState exPrelude1 "x" (I 6)
 --   True
 --
@@ -580,6 +600,8 @@ exPrelude1 :: [Stmt]
 exPrelude1 = [Declare "x" (CallFunc "min" [LitI 7, LitI 6])]
 
 -- | 
+--
+--   var x = pow(2, 5)
 --
 --   >>> testState exPrelude2 "x" (I 32)
 --   True
@@ -589,7 +611,25 @@ exPrelude2 = [Declare "x" (CallFunc "pow" [LitI 2, LitI 5])]
 
 -- Bad examples
 
--- TODO
+-- | 
+--
+--    var x = pow(2, "cat") // Type error
+--    
+--    >>> testError exPrelude3
+--    True
+--
+exPrelude3 :: [Stmt]
+exPrelude3 = [Declare "x" (CallFunc "pow" [LitI 2, LitS "cat"])]
+
+-- | 
+--    
+--    x = min(2, 3) // Undeclared variable "x"
+--
+--    >>> testError exPrelude4
+--    True
+--
+exPrelude4 :: [Stmt]
+exPrelude4 = [Bind "x" (CallFunc "max" [LitI 2, LitI 5])]
 
 -- =========================================
 -- 
