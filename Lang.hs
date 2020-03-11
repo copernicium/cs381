@@ -9,7 +9,6 @@ import Prelude hiding (LT, EQ, GT, and, or, not)
 
 -- Abstract Syntax
 
-type Var = String -- TODO replace with Name
 type Name = String
 
 -- | Expression type
@@ -18,7 +17,7 @@ data Expr
    = LitI Int
    | LitB Bool
    | LitS String
-   | Ref Var
+   | Ref Name
    | Add Expr Expr
    | Sub Expr Expr
    | Mul Expr Expr
@@ -35,13 +34,13 @@ data Expr
 -- | Statement type
 --
 data Stmt
-   = Declare Var Expr
-   | Bind Var Expr
+   = Declare Name Expr
+   | Bind Name Expr
    | IfElse Expr [Stmt] [Stmt]
    | While Expr [Stmt]
    | Begin [Stmt]
    | DeclareFunc Name Type [Type] -- Annotation for type checker for function return type and parameter types
-   | DefineFunc Name [Var] [Stmt] -- Define function body
+   | DefineFunc Name [Name] [Stmt] -- Define function body
    | Return Expr
   deriving (Eq,Show)
 
@@ -110,13 +109,13 @@ data Value
    = I Int 
    | S String
    | B Bool
-   | Function [Var] [Stmt]
+   | Function [Name] [Stmt]
    | Error -- TODO now that the language is statically-typed, can we get rid of this Error value?
   deriving (Eq,Show)
 
 -- | Type for making named values accessible
 --
-type Env = [(Var, Value)] -- TODO scopes, lazy-evaluation?
+type Env = [(Name, Value)]
 
 -- | Resulting type of evaluating a statement
 --
@@ -128,13 +127,13 @@ data EvalResult = State Env        -- All other statements affect the Env
 
 -- | Get the value of a variable
 --
-ref :: Var -> Env -> Value
+ref :: Name -> Env -> Value
 ref _ []                  = Error
 ref var ((name, val) : t) = if name == var then val else ref var t
 
 -- | Check if a variable is defined
 --
-find :: Var -> Env -> Bool
+find :: Name -> Env -> Bool
 find var env = case ref var env of 
                  Error -> False
                  _     -> True
@@ -156,19 +155,25 @@ relationalOp a b env cmp = case (expr a env, expr b env) of
 
 -- | Build a new Env from a list of variable names, a list of expressions (values), and the current environment (parent scope)
 -- 
-buildEnv :: [Var] -> [Expr] -> Env -> Maybe Env
+buildEnv :: [Name] -> [Expr] -> Env -> Maybe Env
 buildEnv (name:names) (e:es) env = case buildEnv names es env of
                                      Just newEnv -> Just ((name, expr e env) : newEnv) -- Add name and evaluated expression to list
                                      Nothing     -> Nothing
 buildEnv [] [] _                 = Just [] -- Good end -- reached end of both lists at same time
 buildEnv _ _ _                   = Nothing   -- Bad end  -- one list ended before the other
 
+filterFunctions :: Env -> Env
+filterFunctions (h:t) = case h of
+                        (_, Function _ _) -> h : filterFunctions t
+                        _                 -> filterFunctions t
+filterFunctions []    = []
+
 -- | Apply a function to a list of argument expressions within a scope
 --
 applyFunc :: Value -> [Expr] -> Env -> Value
-applyFunc (Function params s) args env = case buildEnv params args env of         -- Build the scope for the function
-                                          Just funcEnv -> case eval s funcEnv of  -- Execute the function
-                                                             Result val -> val    -- If the function does not return, then there's an error
+applyFunc (Function params s) args env = case buildEnv params args env of                                   -- Build the scope for the function
+                                          Just funcEnv -> case eval s (funcEnv ++ filterFunctions env) of   -- Execute the function
+                                                             Result val -> val                              -- If the function does not return, then there's an error
                                                              _ -> Error
                                           Nothing -> Error
 applyFunc _ _ _ = Error -- Since we're applying a Value to a list of expressions, if that value is not of type Function, then it's a type error
@@ -200,7 +205,7 @@ expr (CallFunc name params) env = applyFunc (ref name env) params env -- Call th
 
 -- | Bind an existing variable to a new value
 --
-bind :: Var -> Value -> Env -> Maybe Env
+bind :: Name -> Value -> Env -> Maybe Env
 bind var val ((name, val') : t) 
   | name == var = Just ((var, val) : t)
   | otherwise   = case bind var val t of 
@@ -254,7 +259,7 @@ data Type = TInt
 
 -- | Type for making named values accessible
 --
-type TEnv = [(Var, Type)]
+type TEnv = [(Name, Type)]
 
 data EvalType = TResult Type
               | TVoid TEnv
@@ -262,7 +267,7 @@ data EvalType = TResult Type
      deriving (Eq,Show)
 
 --Helper function
-typeOfRef :: Var -> TEnv -> Type
+typeOfRef :: Name -> TEnv -> Type
 typeOfRef name []                = TError ("Undefined reference to name " ++ name)
 typeOfRef var ((name, tval) : t) | var == name = tval
                                  | otherwise   = typeOfRef var t
@@ -309,13 +314,18 @@ exType6 = [IfElse false [Return (LitS "BAD")] [Return (LitI 1)]]
 
 -- | 
 -- 
-buildTEnv :: [Var] -> [Type] -> TEnv -> Maybe TEnv
+buildTEnv :: [Name] -> [Type] -> TEnv -> Maybe TEnv
 buildTEnv (name:names) (t:ts) env = case buildTEnv names ts env of
                                      Just newEnv -> Just ((name, t) : newEnv) -- Add name and evaluated expression to list
                                      Nothing     -> Nothing
 buildTEnv [] [] _                 = Just [] -- Good end -- reached end of both lists at same time
 buildTEnv _ _ _                   = Nothing -- Bad end  -- one list ended before the other
 
+filterTFunctions :: TEnv -> TEnv
+filterTFunctions (h:t) = case h of
+                        (_, TFunction _ _) -> h : filterTFunctions t
+                        _                 -> filterTFunctions t
+filterTFunctions []    = []
 -- |
 --
 matchTypes :: [Type] -> [Expr] -> TEnv -> Bool
@@ -419,7 +429,7 @@ typeStmt (DeclareFunc name t pts)    env = case typeOfRef name env of -- Ensure 
                                              _        -> TEvalError ("Redefintion of function " ++ name)
 typeStmt (DefineFunc name vars body) env = case typeOfRef name env of -- Ensure the function has been declared
                                              TFunction t pts -> case buildTEnv vars pts env of
-                                                                  Just newEnv -> case progType body newEnv of
+                                                                  Just newEnv -> case progType body (newEnv ++ filterTFunctions env) of
                                                                                  TResult t' -> if t' == t then TVoid env else TEvalError ("Function does not return declared type: " ++ name)
                                                                                  TVoid _    -> TEvalError ("Function does not return: " ++ name)
                                                                                  err        -> err
@@ -488,8 +498,7 @@ prelude = [
   DefineFunc "pow" ["base", "exp"][
     IfElse (LTE (Ref "exp") (LitI 0))
       [Return (LitI 1)]
-      [Return (LitI 1)]
-      -- [Return (Mul (Ref "base") (CallFunc "pow" [(Ref "base"), Sub (Ref "exp") (LitI 1)]))] -- TODO fix recusion
+      [Return (Mul (Ref "base") (CallFunc "pow" [(Ref "base"), Sub (Ref "exp") (LitI 1)]))]
   ]
   ]
 
@@ -497,7 +506,7 @@ exPrelude1 :: [Stmt]
 exPrelude1 = [Declare "x" (CallFunc "min" [LitI 7, LitI 6])]
 
 exPrelude2 :: [Stmt]
-exPrelude2 = [Declare "x" (CallFunc "pow" [LitI 2, LitI 5])] -- TODO fix recusion
+exPrelude2 = [Declare "x" (CallFunc "pow" [LitI 2, LitI 5])]
 
 -- =========================================
 -- 
