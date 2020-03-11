@@ -110,7 +110,7 @@ data Value
    | S String
    | B Bool
    | Function [Name] [Stmt]
-   | Error -- TODO now that the language is statically-typed, can we get rid of this Error value?
+   | Error String
   deriving (Eq,Show)
 
 -- | Type for making named values accessible
@@ -121,36 +121,36 @@ type Env = [(Name, Value)]
 --
 data EvalResult = State Env        -- All other statements affect the Env
                 | Result Value     -- Return statements produce Result
-                | EvalError String -- TODO now that the language is statically-typed, can we get rid of this EvalError value?
+                | EvalError String
   deriving (Eq,Show)
 
 
 -- | Get the value of a variable
 --
 ref :: Name -> Env -> Value
-ref _ []                  = Error
+ref var []                = Error ("Reference error to name: " ++ var)
 ref var ((name, val) : t) = if name == var then val else ref var t
 
 -- | Check if a variable is defined
 --
 find :: Name -> Env -> Bool
 find var env = case ref var env of 
-                 Error -> False
-                 _     -> True
+                 Error _ -> False
+                 _       -> True
 
 -- | Apply an arithmetic operator (e.g. addition) to two expressions
 --
 arithmeticOp :: Expr -> Expr -> Env -> (Int -> Int -> Int) -> Value
 arithmeticOp a b env op = case (expr a env, expr b env) of
                             (I i, I j) -> I (op i j)
-                            _          -> Error
+                            _          -> Error ""
 
 -- | Evaluate two expressions of LitI with a relational/comparison operator
 --
 relationalOp :: Expr -> Expr -> Env -> (Int -> Int -> Bool) -> Value
 relationalOp a b env cmp = case (expr a env, expr b env) of
                              (I i, I j) -> B (cmp i j)
-                             _          -> Error
+                             _          -> Error ""
 
 
 -- | Build a new Env from a list of variable names, a list of expressions (values), and the current environment (parent scope)
@@ -174,9 +174,10 @@ applyFunc :: Value -> [Expr] -> Env -> Value
 applyFunc (Function params s) args env = case buildEnv params args env of                                   -- Build the scope for the function
                                           Just funcEnv -> case eval s (funcEnv ++ filterFunctions env) of   -- Execute the function
                                                              Result val -> val                              -- If the function does not return, then there's an error
-                                                             _ -> Error
-                                          Nothing -> Error
-applyFunc _ _ _ = Error -- Since we're applying a Value to a list of expressions, if that value is not of type Function, then it's a type error
+                                                             _ -> Error "Function evaulation error"
+                                          Nothing -> Error "Invalid parameters to function"
+applyFunc (Error msg) _ _              = Error msg
+applyFunc _ _ _                        = Error "Value cannot be used as function" -- Since we're applying a Value to a list of expressions, if that value is not of type Function, then it's a type error
 
 -- Evaluation function for an expression
 --
@@ -188,7 +189,7 @@ expr (Ref var) env              = ref var env
 expr (Add a b) env              = case (expr a env, expr b env) of
                                     (I i, I j) -> I (i + j)
                                     (S i, S j) -> S (i ++ j)
-                                    _ -> Error
+                                    _ -> Error ""
 expr (Sub a b) env              = arithmeticOp a b env (-)
 expr (Mul a b) env              = arithmeticOp a b env (*)
 expr (LT a b) env               = relationalOp a b env (<)
@@ -200,7 +201,7 @@ expr (NE a b) env               = relationalOp a b env (/=)
 expr (Ternary c t e) env        = case (expr c env) of 
                                     (B True)  -> expr t env
                                     (B False) -> expr e env
-                                    _ -> Error
+                                    _ -> Error "Invalid expression type for ternary condition"
 expr (CallFunc name params) env = applyFunc (ref name env) params env -- Call the function by name to a list of params, updating the environment
 
 -- | Bind an existing variable to a new value
