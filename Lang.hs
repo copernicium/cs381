@@ -49,30 +49,71 @@ data Stmt
 -- Examples
 --
 
+-- Helper functions for testing
+
+-- | Test the returned value after evalution of statements
+--
+testResult :: [Stmt] -> Value -> Bool
+testResult s val = case run s of
+                     Result val' -> val' == val
+                     _           -> False
+
+-- | Test the value of a reference after evaluation of statements
+--
+testState :: [Stmt] -> Name -> Value -> Bool
+testState s name val = case run s of
+                         State env -> ref name env == val
+                         _         -> False
+
+-- | Test that evaluation of statements results in an error
+--
+testError :: [Stmt] -> Bool
+testError s = case run s of
+                EvalError _ -> True
+                _           -> False
+
 -- Good Examples
 
--- var x = 0
--- x = 5
+-- |
+--   var x = 0
+--   x = 5
+--
+--
+--   >>> testState ex1 "x" (I 5)
+--   True
+--
 ex1 :: [Stmt]
 ex1 = [Declare "x" (LitI 0),
        Bind "x" (LitI 5)]
-
--- var x = 4
--- var y = 5
--- var z = x + y
+-- | 
+--   var x = 4
+--   var y = 5
+--   var z = x + y
+--
+--
+--   >>> testState ex2 "z" (I 9)
+--   True
 --
 ex2 :: [Stmt]
 ex2 = [Declare "x" (LitI 4),
        Declare "y" (LitI 5),
        Declare "z" (Add (Ref "x") (Ref "y"))]
 
--- var i = 0
--- var y = 1
--- while i < 5
--- begin
---    y = y * 2
---    i = i + 1
--- end
+-- |
+--   var i = 0
+--   var y = 1
+--   while i < 5
+--   begin
+--      y = y * 2
+--      i = i + 1
+--   end
+--
+--
+--   >>> testState ex3 "i" (I 5)
+--   True
+--
+--   >>> testState ex3 "y" (I 32)
+--   True
 --
 ex3 :: [Stmt]
 ex3 = [Declare "i" (LitI 0),
@@ -81,13 +122,17 @@ ex3 = [Declare "i" (LitI 0),
           (Bind "y" (Mul (Ref "y") (LitI 2))),
           (Bind "i" (Add (Ref "i") (LitI 1)))
        ]]
-
--- int double(int)
+-- |
+--   int double(int)
 -- 
--- def double(x)
---    return 2 * x
+--   def double(x)
+--      return 2 * x
 --
--- var x = double(2)
+--   var x = double(2)
+--
+--
+--   >>> testState ex4 "x" (I 4)
+--   True
 --
 ex4 :: [Stmt]
 ex4 = [DeclareFunc "double" TInt [TInt],
@@ -294,26 +339,40 @@ exType3 = (Add (LitI 5) (Ref "x"))
 exType4:: Expr
 exType4 = (LTE (LitI 5) (LitS "56"))
 
--- int double(int)
+-- |
+--   int double(int)
 -- 
--- def double(x,y)
---    if false
---      // Do nothing
---    else
---      return 1
---    // Do nothing -- Bad may not always return!
+--   def double(x,y)
+--      if false
+--        // Do nothing -- Bad, may not always return!
+--      else
+--        return 1
 --
--- var x = double(0)
+--   var x = double(0)
+--
+--
+--   >>> testError exType5
+--   True
 --
 exType5 :: [Stmt]
 exType5 = [DeclareFunc "double" TInt [TInt],
            DefineFunc  "double" ["x"] [IfElse false [nop] [Return (LitI 1)], nop],
            Declare "x" (CallFunc "double" [(LitI 0)])]
 
+-- | 
+--   if false
+--      return "BAD" // Bad, may not always return the same type
+--   else
+--      return 1
+--
+--
+--   >>> testError exType6
+--   True
+--
 exType6 :: [Stmt]
 exType6 = [IfElse false [Return (LitS "BAD")] [Return (LitI 1)]]
 
--- | 
+-- | Build a type environment by matching a list of names with a list of types 
 -- 
 buildTEnv :: [Name] -> [Type] -> TEnv -> Maybe TEnv
 buildTEnv (name:names) (t:ts) env = case buildTEnv names ts env of
@@ -322,19 +381,25 @@ buildTEnv (name:names) (t:ts) env = case buildTEnv names ts env of
 buildTEnv [] [] _                 = Just [] -- Good end -- reached end of both lists at same time
 buildTEnv _ _ _                   = Nothing -- Bad end  -- one list ended before the other
 
+-- | Construct a new environment from only the functions in an existing environment
+--
 filterTFunctions :: TEnv -> TEnv
 filterTFunctions (h:t) = case h of
                         (_, TFunction _ _) -> h : filterTFunctions t
                         _                 -> filterTFunctions t
 filterTFunctions []    = []
--- |
+
+-- | Ensure that the types of each supplied expression match the supplied type list
+--
+--   Used in type-checking function arguments
 --
 matchTypes :: [Type] -> [Expr] -> TEnv -> Bool
 matchTypes (t:ts) (e:es) env = if typeExpr e env == t then matchTypes ts es env else False
 matchTypes [] [] _           = True  -- Good end -- reached end of both lists at same time
 matchTypes _ _ _             = False -- Bad end  -- one list ended before the other
 
---Expression type check
+-- | Type-check an expression
+--
 typeExpr :: Expr -> TEnv -> Type
 typeExpr (LitI _)   _               = TInt
 typeExpr (LitS _)   _               = TString
@@ -399,8 +464,8 @@ typeExpr (CallFunc name params) env = case typeOfRef name env of
                                         _                        -> TError ("Cannot use name " ++ name ++ " as function")
 
 
---Statment type check
-
+-- | Type-check a single statment
+--
 typeStmt :: Stmt -> TEnv -> EvalType
 typeStmt (Declare v e)               env = case typeOfRef v env of  -- Ensure the name v is not in use
                                              TError _ -> case typeExpr e env of
@@ -441,7 +506,8 @@ typeStmt (Return e) env                  = case typeExpr e env of
                                              t          -> TResult t
 
 
---List of statment check
+-- | Type-check a list of statements
+--
 progType :: [Stmt] -> TEnv -> EvalType
 progType [] env          = TVoid env
 progType (s:ss) env = case typeStmt s env of
@@ -503,11 +569,27 @@ prelude = [
   ]
   ]
 
+-- Good examples
+
+-- |
+--
+--   >>> testState exPrelude1 "x" (I 6)
+--   True
+--
 exPrelude1 :: [Stmt]
 exPrelude1 = [Declare "x" (CallFunc "min" [LitI 7, LitI 6])]
 
+-- | 
+--
+--   >>> testState exPrelude2 "x" (I 32)
+--   True
+--
 exPrelude2 :: [Stmt]
 exPrelude2 = [Declare "x" (CallFunc "pow" [LitI 2, LitI 5])]
+
+-- Bad examples
+
+-- TODO
 
 -- =========================================
 -- 
