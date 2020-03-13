@@ -13,7 +13,7 @@ type Name = String
 
 -- | Expression type
 --
-data Expr -- TODO refactor into separate arithmetic and boolean expression types
+data Expr
    = LitI Int
    | LitB Bool
    | LitS String
